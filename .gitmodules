@@ -1,0 +1,3 @@
+[submodule "src/arch-server-scripts/nextcloud/0d9c83acd0c8bf83bcfb3983931bc364"]
+	path = src/arch-server-scripts/nextcloud/0d9c83acd0c8bf83bcfb3983931bc364
+	url = https://gist.github.com/wolegis/0d9c83acd0c8bf83bcfb3983931bc364

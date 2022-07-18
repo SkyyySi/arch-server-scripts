@@ -1,0 +1,11 @@
+{
+	admin "unix//run/caddy/admin.socket"
+}
+
+http://localhost:8078 {
+	root * /home/simon/projects/shell/arch-server-scripts/src/arch-server-scripts/nextcloud/php
+	php_fastcgi unix//run/php-fpm/nextcloud.sock
+	file_server
+}
+
+import /etc/caddy/conf.d/*
