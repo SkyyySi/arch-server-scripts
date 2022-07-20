@@ -13,20 +13,23 @@ fi
 
 
 # Install dependencies
-install-deps caddy php-fpm php-igbinary php-redis redis nextcloud php-imagick php-intl \
+install-deps mysql caddy php-fpm php-igbinary php-redis redis nextcloud php-imagick php-intl \
 	nextcloud-app-{bookmarks,calendar,contacts,deck,mail,news,notes,notify_push,spreed,tasks}
 
-systemctl enable nextcloud-app-notify_push.service
+mkdir -p '/etc/systemd/system/nextcloud-cron.service.d'
+cp './nextcloud-cron_override.conf' '/etc/systemd/system/nextcloud-cron.service.d/override.conf'
 
 
 # Memory cache (redis)
-usermod -G redis caddy
+usermod -G redis,http caddy
+usermod -G redis nextcloud
 
 cp '/etc/redis/redis.conf' '/etc/redis/redis.conf_orig'
 sed 's|^# unixsocket /run/redis.sock$|unixsocket /run/redis/redis.sock|' -i '/etc/redis/redis.conf'
 sed 's|^# unixsocketperm 700$|unixsocketperm 770|' -i '/etc/redis/redis.conf'
+sed 's|^# port 0$|port 0|' -i '/etc/redis/redis.conf'
 
-systemctl enable --now redis.service
+systemctl enable --now redis.service nextcloud-cron.timer
 
 
 # Database (MySQL)
@@ -52,7 +55,7 @@ systemctl enable --now mysql.service
 ## Ask the user to set a new password if one isn't already defined
 if mysql -u root -e 'quit' &> /dev/null; then
 	mysql_password="$(systemd-ask-password 'Enter a new password for the MySQL root user (leave empty for no password):')"
-	mysql_password_verify="$(systemd-ask-password 'Please repeat it (for verifitcation):')"
+	mysql_password_verify="$(systemd-ask-password 'Please repeat it (for verification):')"
 
 	if [[ "${mysql_password}" != "${mysql_password_verify}" ]]; then
 		echo "Your passwords don't appear to match. Exiting."
@@ -64,7 +67,7 @@ fi
 
 ## Create the "nextcloud" database user and database
 nextcloud_password="$(systemd-ask-password 'Enter a new password for the "nextcloud" database (leave empty for no password):')"
-nextcloud_password_verify="$(systemd-ask-password 'Please repeat it (for verifitcation):')"
+nextcloud_password_verify="$(systemd-ask-password 'Please repeat it (for verification):')"
 
 if [[ "${nextcloud_password}" != "${nextcloud_password_verify}" ]]; then
 	echo "Your passwords don't appear to match. Exiting."
@@ -129,7 +132,7 @@ redis.session.lock_wait_time=10000
 date.timezone = ${timezone}
 
 ; Security hardening - restrincts possible read/write locations
-open_basedir=/var/lib/nextcloud/data:/var/lib/nextcloud/apps:/tmp:/usr/share/webapps/nextcloud:/etc/webapps/nextcloud:/dev/urandom:/usr/lib/php/modules:/var/log/nextcloud:/proc/meminfo
+open_basedir=/var/lib/nextcloud/data:/var/lib/nextcloud/apps:/tmp:/usr/share/webapps/nextcloud:/etc/webapps/nextcloud:/dev/urandom:/usr/lib/php/modules:/var/log/nextcloud:/proc/meminfo:/run/redis
 "
 echo "${php_config_addtions}" >> '/etc/webapps/nextcloud/php.ini'
 sed 's/memory_limit = .*/memory_limit = 4096M/' -i '/etc/webapps/nextcloud/php.ini'
@@ -203,7 +206,7 @@ nextcloud_admin_password=""
 while [[ "${nextcloud_admin_password}" = "" ]]; do
 	nextcloud_admin_password="$(systemd-ask-password 'Enter a new password for the Nextcloud admin account:')"
 done
-nextcloud_admin_password_verify="$(systemd-ask-password 'Please repeat it (for verifitcation):')"
+nextcloud_admin_password_verify="$(systemd-ask-password 'Please repeat it (for verification):')"
 
 if [[ "${nextcloud_admin_password}" != "${nextcloud_admin_password_verify}" ]]; then
 	echo "Your passwords don't appear to match. Exiting."
@@ -227,7 +230,30 @@ for i in "${!trusted_domains[@]}"; do
 	occ config:system:set trusted_domains "${i}" --value="${trusted_domains[i]}"
 done
 
-sed "/^);/i     'memcache.distributed' => '\OC\Memcache\Redis',\n  'memcache.locking' => '\OC\Memcache\Redis',\n  'redis' => [\n    'host'     => '/run/redis/redis-server.sock',\n    'port'     => 0,\n    'dbindex'  => 0,\n    'password' => 'secret',\n    'timeout'  => 1.5,\n  ]," -i '/etc/webapps/nextcloud/config/config.php'
+# Enable caching via redis
+sed "/^);/i   'memcache.local' => 'OCMemcacheRedis',\n  'memcache.distributed' => 'OCMemcacheRedis',\n  'memcache.locking' => 'OCMemcacheRedis',\n  'redis' => [\n    'host'     => '/run/redis/redis.sock',\n    'port'     => 0,\n    'dbindex'  => 0,\n    'timeout'  => 1.5,\n  ]," -i '/etc/webapps/nextcloud/config/config.php'
+sed 's|OCMemcacheRedis|\\OC\\Memcache\\Redis|g' -i '/etc/webapps/nextcloud/config/config.php'
+
+occ config:system:set memcache.local --value="\OC\Memcache\Redis"
+occ config:system:set memcache.distributed --value="\OC\Memcache\Redis"
+occ config:system:set memcache.locking --value="\OC\Memcache\Redis"
+occ config:system:set redis host --value="/run/redis/redis.sock"
+occ config:system:set redis port --value="0" --type="integer"
+occ config:system:set redis dbindex --value="0" --type="integer"
+occ config:system:set redis timeout --value="1.5" --type="double"
+# TODO: Find out why the above completely breaks nextcloud
+
+# Enable the installed Nextcloud apps
+occ app:enable bookmarks
+occ app:enable calendar
+occ app:enable contacts
+occ app:enable deck
+occ app:enable mail
+occ app:enable news
+occ app:enable notes
+occ app:enable notify_push
+occ app:enable spreed
+occ app:enable tasks
 
 # php-fpm
 
@@ -235,6 +261,8 @@ cp '/etc/php/php.ini' '/etc/php/php-fpm.ini'
 
 sed 's/;zend_extension=opcache/zend_extension=opcache/' -i '/etc/php/php-fpm.ini'
 sed '/\[opcache\]/a opcache.enable = 1\nopcache.interned_strings_buffer = 8\nopcache.max_accelerated_files = 10000\nopcache.memory_consumption = 128\nopcache.save_comments = 1\nopcache.revalidate_freq = 1\n' -i '/etc/php/php-fpm.ini'
+
+echo "${php_config_addtions}" >> '/etc/php/php-fpm.ini'
 
 chmod 644 '/etc/php/php-fpm.ini'
 
@@ -254,7 +282,7 @@ echo '; This file was disabled by arch-server-scripts' > '/etc/php/php-fpm.d/www
 
 # Modify, enable and start the systemd unit
 mkdir -p '/etc/systemd/system/php-fpm.service.d'
-cp './override.conf' '/etc/systemd/system/php-fpm.service.d/override.conf'
+cp './php-fpm_override.conf' '/etc/systemd/system/php-fpm.service.d/override.conf'
 
 echo
 echo ">>> Enableing and starting php-fpm.service..."
@@ -272,6 +300,9 @@ cp './caddy-nextcloud.service' '/usr/lib/systemd/system'
 
 ## Enable and start the systemd unit
 systemctl enable --now caddy-nextcloud.service
+
+
+systemctl enable --now nextcloud-app-notify_push.service
 
 # Return to the previous working directory
 cd "${__OLD_DIR}" || exit 2

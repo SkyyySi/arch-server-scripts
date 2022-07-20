@@ -3,7 +3,7 @@
 }
 
 http://localhost:8078 {
-	root * /home/simon/projects/shell/arch-server-scripts/src/arch-server-scripts/nextcloud/php
+	root * /usr/share/webapps/nextcloud
 	php_fastcgi unix//run/php-fpm/nextcloud.sock
 	file_server
 }
