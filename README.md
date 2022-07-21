@@ -24,10 +24,8 @@ having read about that on the r/archlinux subreddit).
 
 ## Usage
 
-Note: A command block starting with `$` is intended to be run as a user, a line starting
-with `#` is intended to be run as root (for example, using `sudo`).
-
-
+You just `cd` into a directory and run `intall.sh` as root. As simple as that.
+Please read the README of each script you want to use first!
 
 ### Dependencies
 
