@@ -234,13 +234,13 @@ done
 sed "/^);/i   'memcache.local' => 'OCMemcacheRedis',\n  'memcache.distributed' => 'OCMemcacheRedis',\n  'memcache.locking' => 'OCMemcacheRedis',\n  'redis' => [\n    'host'     => '/run/redis/redis.sock',\n    'port'     => 0,\n    'dbindex'  => 0,\n    'timeout'  => 1.5,\n  ]," -i '/etc/webapps/nextcloud/config/config.php'
 sed 's|OCMemcacheRedis|\\OC\\Memcache\\Redis|g' -i '/etc/webapps/nextcloud/config/config.php'
 
-occ config:system:set memcache.local --value="\OC\Memcache\Redis"
-occ config:system:set memcache.distributed --value="\OC\Memcache\Redis"
-occ config:system:set memcache.locking --value="\OC\Memcache\Redis"
 occ config:system:set redis host --value="/run/redis/redis.sock"
 occ config:system:set redis port --value="0" --type="integer"
 occ config:system:set redis dbindex --value="0" --type="integer"
 occ config:system:set redis timeout --value="1.5" --type="double"
+occ config:system:set memcache.local --value="\OC\Memcache\Redis"
+occ config:system:set memcache.distributed --value="\OC\Memcache\Redis"
+occ config:system:set memcache.locking --value="\OC\Memcache\Redis"
 # TODO: Find out why the above completely breaks nextcloud
 
 # Enable the installed Nextcloud apps
@@ -303,6 +303,7 @@ systemctl enable --now caddy-nextcloud.service
 
 
 systemctl enable --now nextcloud-app-notify_push.service
+# TODO: Add `occ notify_push:setup <YOUR_DOMAIN>`-prompt
 
 # Return to the previous working directory
 cd "${__OLD_DIR}" || exit 2
