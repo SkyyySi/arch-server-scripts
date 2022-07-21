@@ -54,8 +54,8 @@ systemctl enable --now mysql.service
 
 ## Ask the user to set a new password if one isn't already defined
 if mysql -u root -e 'quit' &> /dev/null; then
-	mysql_password="$(systemd-ask-password 'Enter a new password for the MySQL root user (leave empty for no password):')"
-	mysql_password_verify="$(systemd-ask-password 'Please repeat it (for verification):')"
+	mysql_password="$(systemd-ask-password --timeout 0 'Enter a new password for the MySQL root user (leave empty for no password):')"
+	mysql_password_verify="$(systemd-ask-password --timeout 0 'Please repeat it (for verification):')"
 
 	if [[ "${mysql_password}" != "${mysql_password_verify}" ]]; then
 		echo "Your passwords don't appear to match. Exiting."
@@ -66,8 +66,8 @@ if mysql -u root -e 'quit' &> /dev/null; then
 fi
 
 ## Create the "nextcloud" database user and database
-nextcloud_password="$(systemd-ask-password 'Enter a new password for the "nextcloud" database (leave empty for no password):')"
-nextcloud_password_verify="$(systemd-ask-password 'Please repeat it (for verification):')"
+nextcloud_password="$(systemd-ask-password --timeout 0 'Enter a new password for the "nextcloud" database (leave empty for no password):')"
+nextcloud_password_verify="$(systemd-ask-password --timeout 0 'Please repeat it (for verification):')"
 
 if [[ "${nextcloud_password}" != "${nextcloud_password_verify}" ]]; then
 	echo "Your passwords don't appear to match. Exiting."
@@ -155,6 +155,8 @@ while [[ "${additional_domain}" != "" ]]; do
 	fi
 done
 
+### The following is likely redundant and can probably just be removed,
+### since `occ` will take care of setting this up anyway.
 nextcloud_config="
 <?php
 \$CONFIG = [
@@ -204,9 +206,9 @@ done
 
 nextcloud_admin_password=""
 while [[ "${nextcloud_admin_password}" = "" ]]; do
-	nextcloud_admin_password="$(systemd-ask-password 'Enter a new password for the Nextcloud admin account:')"
+	nextcloud_admin_password="$(systemd-ask-password --timeout 0 'Enter a new password for the Nextcloud admin account:')"
 done
-nextcloud_admin_password_verify="$(systemd-ask-password 'Please repeat it (for verification):')"
+nextcloud_admin_password_verify="$(systemd-ask-password --timeout 0 'Please repeat it (for verification):')"
 
 if [[ "${nextcloud_admin_password}" != "${nextcloud_admin_password_verify}" ]]; then
 	echo "Your passwords don't appear to match. Exiting."
