@@ -5,12 +5,11 @@ cd "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")"&>/dev/null&&pwd)" || exit 2
 source '../../include/elevate.sh'
 source '../../include/install-deps.sh'
 
-
-# This script require root privileges
+# This script requires root privileges
 if [[ "${EUID}" != 0 ]]; then
-	exec "${0}" "${@}"
+	elevate "${0}" "${@}"
+	exit "${?:-0}"
 fi
-
 
 # Install dependencies
 install-deps mysql caddy php-fpm php-igbinary php-redis redis nextcloud php-imagick php-intl \
