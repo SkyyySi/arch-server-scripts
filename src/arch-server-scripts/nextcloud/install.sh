@@ -242,7 +242,9 @@ occ config:system:set redis timeout --value="1.5" --type="double"
 occ config:system:set memcache.local --value="\OC\Memcache\Redis"
 occ config:system:set memcache.distributed --value="\OC\Memcache\Redis"
 occ config:system:set memcache.locking --value="\OC\Memcache\Redis"
-# TODO: Find out why the above completely breaks nextcloud
+
+# Other configuration
+occ config:system:set htaccess.RewriteBase --value="/"
 
 # Enable the installed Nextcloud apps
 occ app:enable bookmarks

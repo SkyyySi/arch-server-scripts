@@ -5,6 +5,13 @@
 http://localhost:8078 {
 	root * /usr/share/webapps/nextcloud
 	php_fastcgi unix//run/php-fpm/nextcloud.sock
+
+	@remove_indexphp {
+		path_regexp remove_indexphp "^/index.php/(.*)$"
+	}
+
+	redir @remove_indexphp /{http.regexp.remove_indexphp.1}
+
 	file_server
 }
 
