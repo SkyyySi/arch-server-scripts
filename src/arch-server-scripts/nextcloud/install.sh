@@ -12,8 +12,7 @@ if [[ "${EUID}" != 0 ]]; then
 fi
 
 # Install dependencies
-install-deps mysql caddy php-fpm php-igbinary php-redis redis nextcloud php-imagick php-intl \
-	nextcloud-app-{bookmarks,calendar,contacts,deck,mail,news,notes,notify_push,spreed,tasks}
+install-deps mysql caddy php-fpm php-igbinary php-imagick php-intl php-redis redis nextcloud nextcloud-apps
 
 mkdir -p '/etc/systemd/system/nextcloud-cron.service.d'
 cp './nextcloud-cron_override.conf' '/etc/systemd/system/nextcloud-cron.service.d/override.conf'
